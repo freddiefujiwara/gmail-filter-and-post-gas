@@ -59,7 +59,7 @@ describe("myFunction", () => {
   });
 
   it("does not fetch when a label has no unread threads", () => {
-    sheetValues = [["kuronekoyamato", "%E3%82%AF%E3%83%AD%E3%83%8D%E3%82%B3"]];
+    sheetValues = [["kuronekoyamato", "クロネコヤマト"]];
     myFunction();
     expect(GmailApp.search).toHaveBeenCalledTimes(1);
     expect(GmailApp.search).toHaveBeenCalledWith(
@@ -69,8 +69,10 @@ describe("myFunction", () => {
   });
 
   it("marks every message read, logs subjects, and fetches once per label with mail", () => {
+    const text = "武南学園";
+    // the percent-encoded form the old =ENCODEURL("武南学園") cells produced
     const encoded = "%E6%AD%A6%E5%8D%97%E5%AD%A6%E5%9C%92";
-    sheetValues = [["bunan", encoded]];
+    sheetValues = [["bunan", text]];
     const m1 = makeMessage("subject one");
     const m2 = makeMessage("subject two");
     const m3 = makeMessage("subject three");
@@ -93,7 +95,7 @@ describe("myFunction", () => {
   });
 
   it("builds the search query exactly, passing a trailing-space label through as is", () => {
-    sheetValues = [["times-coming ", "%E3%82%BF%E3%82%A4%E3%83%A0%E3%82%BA"]];
+    sheetValues = [["times-coming ", "タイムズ"]];
     myFunction();
     expect(GmailApp.search).toHaveBeenCalledTimes(1);
     expect(GmailApp.search).toHaveBeenCalledWith(
@@ -103,9 +105,9 @@ describe("myFunction", () => {
 
   it("processes multiple rows in order, fetching only for labels with mail", () => {
     sheetValues = [
-      ["first", "ENC1"],
-      ["second", "ENC2"],
-      ["third", "ENC3"],
+      ["first", "あ"],
+      ["second", "い"],
+      ["third", "う"],
     ];
     threadsByQuery["label:first label:unread"] = [
       makeThread([makeMessage("a")]),
@@ -120,8 +122,8 @@ describe("myFunction", () => {
       "label:third label:unread",
     ]);
     expect(UrlFetchApp.fetch.mock.calls.map((c) => c[0])).toEqual([
-      PREFIX + "ENC1" + SUFFIX,
-      PREFIX + "ENC3" + SUFFIX,
+      PREFIX + "%E3%81%82" + SUFFIX,
+      PREFIX + "%E3%81%86" + SUFFIX,
     ]);
   });
 });
