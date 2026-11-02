@@ -25,7 +25,7 @@ export function myFunction() {
 
     //  POST IFTTT if you've got email from with the label
     Logger.log(IFTTT);
-    const res = UrlFetchApp.fetch(IFTTT + label[1] + URL, {
+    const res = UrlFetchApp.fetch(IFTTT + encodeURIComponent(label[1]) + URL, {
       'muteHttpExceptions': true,
       'method': 'get'
     });

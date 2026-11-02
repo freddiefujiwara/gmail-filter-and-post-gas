@@ -9,8 +9,9 @@ home speaker.
 - The spreadsheet bound to this project is the label list. There is
   no header row.
   - Column A: a Gmail label name.
-  - Column B: the announcement text for that label, URL-encoded
-    (the sheet cells hold it as `=ENCODEURL("...")` formulas).
+  - Column B: the announcement text for that label, in plain text.
+    The code URL-encodes it when building the speech request, so
+    the sheet stays readable and editable as normal Japanese.
 - `myFunction` runs every minute from a time-driven trigger.
   - For each row with at least 2 columns, it searches Gmail for
     `label:<label> label:unread`.
