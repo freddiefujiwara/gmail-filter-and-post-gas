@@ -1,17 +1,27 @@
-// Maximum number of characters of a subject that are spoken aloud.
+// Maximum number of characters of a subject title that are spoken aloud.
 const SUBJECT_MAX_LENGTH = 20;
 // Characters that end the meaningful head of a subject.
 const SUBJECT_DELIMITERS = ['：', ':', '｜', '|', '、', '。'];
 
-// Reduce a subject to its meaningful head: drop leading bracketed tags such
-// as or [...], cut at the first delimiter, and cap the length.
-export function truncateSubject(subject) {
+// Extract the title to speak from a message subject. Japanese
+// notification mails often embed the actual title in corner brackets,
+// e.g. "someone posted 「the title」" — that segment wins. Otherwise
+// the head of the subject is used: leading tags such as 【...】 or [...]
+// are dropped and the rest is cut at the first delimiter. A trailing
+// "..." left by a sender that truncated the title itself is removed.
+export function extractSubjectTitle(subject) {
 if (!subject) {
 return '';
 }
 const stripped = String(subject)
 .trim()
 .replace(/^(\s*【[\s\S]*?】\s*|\s*\[[\s\S]*?\]\s*)+/, '');
+const quoted = stripped.match(/「([^」]+)」/);
+let title = '';
+if (quoted) {
+title = quoted[1].replace(/(\.\.\.|…)+$/, '').trim();
+}
+if (!title) {
 let cut = stripped.length;
 SUBJECT_DELIMITERS.forEach((delimiter) => {
 const index = stripped.indexOf(delimiter);
@@ -19,22 +29,9 @@ if (index > 0 && index < cut) {
 cut = index;
 }
 });
-return stripped.slice(0, cut).trim().slice(0, SUBJECT_MAX_LENGTH);
+title = stripped.slice(0, cut).trim();
 }
-
-// Extract "H時MM分に登校しました" / "H時MM分に下校しました" from the plain
-// body of a HotConpass mail, e.g. "... 2026/11/05 08:23:38 に登校しました。"
-export function extractSchoolDetail(body) {
-if (!body) {
-return '';
-}
-const match = String(body).match(
-/(\d{1,2}):(\d{2}):\d{2}\s*に(登校|下校)しました/
-);
-if (!match) {
-return '';
-}
-return Number(match[1]) + '時' + match[2] + '分に' + match[3] + 'しました';
+return title.slice(0, SUBJECT_MAX_LENGTH);
 }
 
 export function myFunction() {
@@ -74,15 +71,13 @@ return;
 }
 
 // the optional third column selects extra detail to speak:
-// "件名" speaks the (truncated) subject, "登下校" speaks the time a
-// HotConpass mail reports. Without a recognised mode, or when no detail
-// can be extracted, the announcement stays exactly as before.
+// "件名" speaks the title extracted from the subject of the newest
+// message. Without a recognised mode the announcement stays exactly
+// as before.
 const mode = label.length > 2? String(label[2]).trim(): '';
 let detail = '';
-if (mode === '登下校' && detailMessage) {
-detail = extractSchoolDetail(detailMessage.getPlainBody());
-} else if (mode === '件名' && detailMessage) {
-detail = truncateSubject(detailMessage.getSubject());
+if (mode === '件名' && detailMessage) {
+detail = extractSubjectTitle(detailMessage.getSubject());
 }
 
 // POST IFTTT if you've got email from with the label
