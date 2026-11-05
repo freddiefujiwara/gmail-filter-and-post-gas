@@ -147,6 +147,15 @@ describe("extractSubjectTitle", () => {
     expect(extractSubjectTitle("タイトル、補足の説明です")).toBe("タイトル");
   });
 
+  it("does not cut when fewer than 3 characters precede the delimiter", () => {
+    expect(extractSubjectTitle("本日、お荷物をお届けいたします")).toBe(
+      "本日、お荷物をお届けいたします"
+    );
+    expect(extractSubjectTitle("お荷物お届けのお知らせ")).toBe(
+      "お荷物お届けのお知らせ"
+    );
+  });
+
   it("caps the result at 20 characters", () => {
     expect(extractSubjectTitle("あ".repeat(30))).toBe("あ".repeat(20));
   });
@@ -292,8 +301,35 @@ describe("myFunction with the 登下校 mode", () => {
     );
   });
 
-  it("falls back to the subject title when the body has no gate time", () => {
+  it("stays on the legacy announcement when the body has no gate time", () => {
     sheetValues = [["bunan", "武南学園", "登下校"]];
+    const message = makeBodyMessage(
+      "石川 美和子 先生が「この度、日本スポーツ振興センターの制度改...」をR8第2学年【保護者】に投稿しました。",
+      "投稿のお知らせです。"
+    );
+    threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
+    myFunction();
+    expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
+      PREFIX + "%E6%AD%A6%E5%8D%97%E5%AD%A6%E5%9C%92" + SUFFIX,
+      { muteHttpExceptions: true, method: "get" }
+    );
+  });
+
+  it("falls back to the legacy announcement when neither works", () => {
+    sheetValues = [["bunan", "武南学園", "登下校"]];
+    const message = makeBodyMessage("", "時刻の入っていない本文");
+    threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
+    myFunction();
+    expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
+      PREFIX + "%E6%AD%A6%E5%8D%97%E5%AD%A6%E5%9C%92" + SUFFIX,
+      { muteHttpExceptions: true, method: "get" }
+    );
+  });
+});
+
+describe("myFunction with combined modes", () => {
+  it("登下校、件名 speaks the subject title when the body has no gate time", () => {
+    sheetValues = [["bunan", "武南学園", "登下校、件名"]];
     const message = makeBodyMessage(
       "石川 美和子 先生が「この度、日本スポーツ振興センターの制度改...」をR8第2学年【保護者】に投稿しました。",
       "投稿のお知らせです。"
@@ -309,13 +345,52 @@ describe("myFunction with the 登下校 mode", () => {
     );
   });
 
-  it("falls back to the legacy announcement when neither works", () => {
-    sheetValues = [["bunan", "武南学園", "登下校"]];
-    const message = makeBodyMessage("", "時刻の入っていない本文");
+  it("登下校、件名 still prefers the gate time when present", () => {
+    sheetValues = [["bunan", "武南学園", "登下校、件名"]];
+    const message = makeBodyMessage("登校メール", TOUKOU_BODY);
     threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
     myFunction();
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      PREFIX + "%E6%AD%A6%E5%8D%97%E5%AD%A6%E5%9C%92" + SUFFIX,
+      PREFIX + encodeURIComponent("武南学園、8時23分に登校しました。"),
+      { muteHttpExceptions: true, method: "get" }
+    );
+  });
+
+  it("件名、登下校 prefers the subject title when both are available", () => {
+    sheetValues = [["bunan", "武南学園", "件名、登下校"]];
+    const message = makeBodyMessage("下校メール", GEKOU_BODY);
+    threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
+    myFunction();
+    expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
+      PREFIX + encodeURIComponent("武南学園、下校メール。"),
+      { muteHttpExceptions: true, method: "get" }
+    );
+  });
+
+  it("ignores unknown modes mixed into the list", () => {
+    sheetValues = [["bunan", "武南学園", "不明、件名"]];
+    const message = makeBodyMessage("下校メール", GEKOU_BODY);
+    threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
+    myFunction();
+    expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
+      PREFIX + encodeURIComponent("武南学園、下校メール。"),
+      { muteHttpExceptions: true, method: "get" }
+    );
+  });
+
+  it("speaks a delivery subject for a 件名 row", () => {
+    sheetValues = [["kuronekoyamato", "クロネコヤマト", "件名"]];
+    const message = makeBodyMessage(
+      "本日、お荷物をお届けいたします",
+      "お届け予定の本文"
+    );
+    threadsByQuery["label:kuronekoyamato label:unread"] = [
+      makeThread([message]),
+    ];
+    myFunction();
+    expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
+      PREFIX +
+        encodeURIComponent("クロネコヤマト、本日、お荷物をお届けいたします。"),
       { muteHttpExceptions: true, method: "get" }
     );
   });
