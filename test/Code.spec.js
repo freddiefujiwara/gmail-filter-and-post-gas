@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  extractSchoolDetail,
   extractSubjectTitle,
   myFunction,
 } from "../src/Code.js";
@@ -249,6 +250,74 @@ describe("myFunction with a detail mode in the third column", () => {
     sheetValues = [["bunan", "武南学園", "件名"]];
     myFunction();
     expect(UrlFetchApp.fetch).not.toHaveBeenCalled();
+  });
+});
+
+const makeBodyMessage = (subject, body) => ({
+  markRead: vi.fn(),
+  getSubject: vi.fn(() => subject),
+  getPlainBody: vi.fn(() => body),
+});
+
+const TOUKOU_BODY =
+  "藤原　千咲 さん\n\n武南高等学校からのお知らせです。\n\n中学・高等学校に 2026/11/05 08:23:38 に登校しました。\n\n\n本メールは送信専用のため返信はお受けできません。";
+const GEKOU_BODY =
+  "藤原　千咲 さん\n\n武南高等学校からのお知らせです。\n\n中学・高等学校より 2026/11/05 17:47:34 に下校しました。\n\n\n本メールは送信専用のため返信はお受けできません。";
+
+describe("extractSchoolDetail", () => {
+  it("extracts the arrival time from a 登校 mail body", () => {
+    expect(extractSchoolDetail(TOUKOU_BODY)).toBe("8時23分に登校しました");
+  });
+
+  it("extracts the leaving time from a 下校 mail body", () => {
+    expect(extractSchoolDetail(GEKOU_BODY)).toBe("17時47分に下校しました");
+  });
+
+  it("returns an empty string when the body does not match", () => {
+    expect(extractSchoolDetail("関係のない本文です")).toBe("");
+    expect(extractSchoolDetail("")).toBe("");
+  });
+});
+
+describe("myFunction with the 登下校 mode", () => {
+  it("speaks the gate time from the body", () => {
+    sheetValues = [["bunan", "武南学園", "登下校"]];
+    const message = makeBodyMessage("下校メール", GEKOU_BODY);
+    threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
+    myFunction();
+    expect(message.markRead).toHaveBeenCalledTimes(1);
+    expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
+      PREFIX + encodeURIComponent("武南学園、17時47分に下校しました。"),
+      { muteHttpExceptions: true, method: "get" }
+    );
+  });
+
+  it("falls back to the subject title when the body has no gate time", () => {
+    sheetValues = [["bunan", "武南学園", "登下校"]];
+    const message = makeBodyMessage(
+      "石川 美和子 先生が「この度、日本スポーツ振興センターの制度改...」をR8第2学年【保護者】に投稿しました。",
+      "投稿のお知らせです。"
+    );
+    threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
+    myFunction();
+    expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
+      PREFIX +
+        encodeURIComponent(
+          "武南学園、この度、日本スポーツ振興センターの制度改。"
+        ),
+      { muteHttpExceptions: true, method: "get" }
+    );
+  });
+
+  it("falls back to the legacy announcement when neither works", () => {
+    sheetValues = [["bunan", "武南学園", "登下校"]];
+    const message = makeBodyMessage("", "時刻の入っていない本文");
+    threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
+    myFunction();
+    expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
+      PREFIX + "%E6%AD%A6%E5%8D%97%E5%AD%A6%E5%9C%92" + SUFFIX,
+      { muteHttpExceptions: true, method: "get" }
+    );
   });
 });
 
