@@ -33,18 +33,18 @@ jobs:
         run: npm test
 
       - name: Build
-        if: ${{ matrix.deploy }}
+        if: ${{ matrix.deploy && github.ref == 'refs/heads/main' }}
         run: npm run build
 
       - name: Install clasp
-        if: ${{ matrix.deploy }}
+        if: ${{ matrix.deploy && github.ref == 'refs/heads/main' }}
         run: npm i -g @google/clasp
 
       - name: Write clasp credentials
-        if: ${{ matrix.deploy }}
+        if: ${{ matrix.deploy && github.ref == 'refs/heads/main' }}
         run: |
           echo '${{ secrets.CLASPRC_JSON }}' > ~/.clasprc.json
 
       - name: Push dist to Apps Script
-        if: ${{ matrix.deploy }}
+        if: ${{ matrix.deploy && github.ref == 'refs/heads/main' }}
         run: clasp push --force
