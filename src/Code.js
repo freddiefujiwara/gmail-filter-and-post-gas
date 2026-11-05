@@ -25,7 +25,9 @@ if (!title) {
 let cut = stripped.length;
 SUBJECT_DELIMITERS.forEach((delimiter) => {
 const index = stripped.indexOf(delimiter);
-if (index > 0 && index < cut) {
+// A delimiter only counts when at least 3 characters precede it,
+// so "本日、お荷物をお届けいたします" is not reduced to "本日".
+if (index >= 3 && index < cut) {
 cut = index;
 }
 });
@@ -85,21 +87,32 @@ if (!gotMail) {
 return;
 }
 
-// the optional third column selects extra detail to speak:
-// "件名" speaks the title extracted from the subject of the newest
-// message; "登下校" first tries the gate time in the body of the
-// newest message and falls back to the subject title. Without a
-// recognised mode, or when no detail can be extracted, the
-// announcement stays exactly as before.
-const mode = label.length > 2? String(label[2]).trim(): '';
+// the optional third column lists the modes to try, in order,
+// separated by "、", "," or spaces. "件名" extracts a title from the
+// subject of the newest message; "登下校" extracts the gate time
+// from its body. The first mode that yields a detail wins, e.g.
+// "登下校、件名" speaks the gate time when present and the subject
+// title otherwise. With no recognised mode, or when no mode yields
+// a detail, the announcement stays exactly as before.
+const modes =
+label.length > 2
+? String(label[2])
+.split(/[,、\s]+/)
+.map((mode) => mode.trim())
+.filter((mode) => mode.length > 0)
+: [];
 let detail = '';
-if (mode === '登下校' && detailMessage) {
+if (detailMessage) {
+for (const mode of modes) {
+if (mode === '登下校') {
 detail = extractSchoolDetail(detailMessage.getPlainBody());
-if (!detail) {
+} else if (mode === '件名') {
 detail = extractSubjectTitle(detailMessage.getSubject());
 }
-} else if (mode === '件名' && detailMessage) {
-detail = extractSubjectTitle(detailMessage.getSubject());
+if (detail) {
+break;
+}
+}
 }
 
 // POST IFTTT if you've got email from with the label
