@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   extractSchoolDetail,
   extractSubjectTitle,
+  extractTimesDetail,
   myFunction,
 } from "../src/Code.js";
 
@@ -285,6 +286,67 @@ describe("extractSchoolDetail", () => {
   it("returns an empty string when the body does not match", () => {
     expect(extractSchoolDetail("関係のない本文です")).toBe("");
     expect(extractSchoolDetail("")).toBe("");
+  });
+});
+
+const TIMES_BODY = [
+  "藤原史和　様",
+  "",
+  "┏━━■予約内容■━━━━━┓",
+  "",
+  "■予約番号",
+  "231551462",
+  "■ステーション",
+  "坂下第３駐車場",
+  "https://share.timescar.jp/view/station/detail.jsp?scd=NM29",
+  "■車両",
+  "ハスラー （川口 580 ワ 664:ダークブルー）",
+  "■利用開始日時",
+  "2026/10/25 11:00",
+  "■返却予定日時",
+  "2026/10/25 23:00 ",
+  "■追加運転者",
+  "なし",
+].join("\n");
+
+describe("extractTimesDetail", () => {
+  it("summarises a same-day booking from the real mail layout", () => {
+    expect(extractTimesDetail(TIMES_BODY)).toBe(
+      "10月25日11時から23時まで、坂下第３駐車場のハスラーです"
+    );
+  });
+
+  it("spells out the return date for a multi-day booking", () => {
+    const body = TIMES_BODY.replace(
+      "2026/10/25 23:00 ",
+      "2026/10/27 09:30"
+    );
+    expect(extractTimesDetail(body)).toBe(
+      "10月25日11時から10月27日9時30分まで、坂下第３駐車場のハスラーです"
+    );
+  });
+
+  it("returns an empty string when the block is missing", () => {
+    expect(extractTimesDetail("予約内容のない本文")).toBe("");
+    expect(extractTimesDetail("")).toBe("");
+  });
+});
+
+describe("myFunction with the タイムズ mode", () => {
+  it("speaks the booking summary", () => {
+    sheetValues = [["times-coming ", "タイムズ", "タイムズ"]];
+    const message = makeBodyMessage("【Times CAR】予約確認", TIMES_BODY);
+    threadsByQuery["label:times-coming  label:unread"] = [
+      makeThread([message]),
+    ];
+    myFunction();
+    expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
+      PREFIX +
+        encodeURIComponent(
+          "タイムズ、10月25日11時から23時まで、坂下第３駐車場のハスラーです。"
+        ),
+      { muteHttpExceptions: true, method: "get" }
+    );
   });
 });
 

@@ -51,6 +51,53 @@ return '';
 return Number(match[1]) + '時' + match[2] + '分に' + match[3] + 'しました';
 }
 
+function formatTimesWhen(month, day, hour, minute) {
+return (
+Number(month) +
+'月' +
+Number(day) +
+'日' +
+Number(hour) +
+'時' +
+(minute === '00' ? '' : minute + '分')
+);
+}
+
+// Extract the booking summary from a Times CAR mail body: the
+// ■予約内容 block carries the station, the car and the start /
+// return datetimes on the lines after each heading.
+export function extractTimesDetail(body) {
+if (!body) {
+return '';
+}
+const text = String(body);
+const start = text.match(
+/■利用開始日時\s*\n\s*\d{4}\/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})/
+);
+const end = text.match(
+/■返却予定日時\s*\n\s*\d{4}\/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})/
+);
+const station = text.match(/■ステーション\s*\n\s*(\S.*)/);
+const car = text.match(/■車両\s*\n\s*([^\s（(]+)/);
+if (!start || !end || !station || !car) {
+return '';
+}
+const sameDay = start[1] === end[1] && start[2] === end[2];
+const endText = sameDay
+? Number(end[3]) + '時' + (end[4] === '00' ? '' : end[4] + '分') + 'まで'
+: formatTimesWhen(end[1], end[2], end[3], end[4]) + 'まで';
+return (
+formatTimesWhen(start[1], start[2], start[3], start[4]) +
+'から' +
+endText +
+'、' +
+station[1].trim() +
+'の' +
+car[1] +
+'です'
+);
+}
+
 export function myFunction() {
 // the speech URL prefix comes from the SPEECH_URL_PREFIX script property
 const IFTTT = PropertiesService.getScriptProperties().getProperty('SPEECH_URL_PREFIX');
@@ -90,7 +137,8 @@ return;
 // the optional third column lists the modes to try, in order,
 // separated by "、", "," or spaces. "件名" extracts a title from the
 // subject of the newest message; "登下校" extracts the gate time
-// from its body. The first mode that yields a detail wins, e.g.
+// from its body; "タイムズ" extracts the booking summary from its
+// body. The first mode that yields a detail wins, e.g.
 // "登下校、件名" speaks the gate time when present and the subject
 // title otherwise. With no recognised mode, or when no mode yields
 // a detail, the announcement stays exactly as before.
@@ -106,6 +154,8 @@ if (detailMessage) {
 for (const mode of modes) {
 if (mode === '登下校') {
 detail = extractSchoolDetail(detailMessage.getPlainBody());
+} else if (mode === 'タイムズ') {
+detail = extractTimesDetail(detailMessage.getPlainBody());
 } else if (mode === '件名') {
 detail = extractSubjectTitle(detailMessage.getSubject());
 }
