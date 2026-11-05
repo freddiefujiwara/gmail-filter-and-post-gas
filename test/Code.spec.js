@@ -287,3 +287,22 @@ describe("myFunction with DRY_RUN", () => {
     }
   });
 });
+
+describe("myFunction with blank label rows", () => {
+  it("ignores rows whose label cell is empty instead of matching all unread mail", () => {
+    sheetValues = [
+      ["", "", ""],
+      ["bunan", "武南学園", ""],
+    ];
+    const stray = makeMessage("関係ないメール");
+    threadsByQuery["label: label:unread"] = [makeThread([stray])];
+    const bunanMessage = makeMessage("下校メール");
+    threadsByQuery["label:bunan label:unread"] = [
+      makeThread([bunanMessage]),
+    ];
+    myFunction();
+    expect(stray.markRead).not.toHaveBeenCalled();
+    expect(bunanMessage.markRead).toHaveBeenCalledTimes(1);
+    expect(UrlFetchApp.fetch).toHaveBeenCalledTimes(1);
+  });
+});
