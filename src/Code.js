@@ -34,6 +34,21 @@ title = stripped.slice(0, cut).trim();
 return title.slice(0, SUBJECT_MAX_LENGTH);
 }
 
+// Extract "H時MM分に登校しました" / "H時MM分に下校しました" from the plain
+// body of a school gate mail, e.g. "... 2026/11/05 08:23:38 に登校しました。"
+export function extractSchoolDetail(body) {
+if (!body) {
+return '';
+}
+const match = String(body).match(
+/(\d{1,2}):(\d{2}):\d{2}\s*に(登校|下校)しました/
+);
+if (!match) {
+return '';
+}
+return Number(match[1]) + '時' + match[2] + '分に' + match[3] + 'しました';
+}
+
 export function myFunction() {
 // the speech URL prefix comes from the SPEECH_URL_PREFIX script property
 const IFTTT = PropertiesService.getScriptProperties().getProperty('SPEECH_URL_PREFIX');
@@ -72,11 +87,18 @@ return;
 
 // the optional third column selects extra detail to speak:
 // "件名" speaks the title extracted from the subject of the newest
-// message. Without a recognised mode the announcement stays exactly
-// as before.
+// message; "登下校" first tries the gate time in the body of the
+// newest message and falls back to the subject title. Without a
+// recognised mode, or when no detail can be extracted, the
+// announcement stays exactly as before.
 const mode = label.length > 2? String(label[2]).trim(): '';
 let detail = '';
-if (mode === '件名' && detailMessage) {
+if (mode === '登下校' && detailMessage) {
+detail = extractSchoolDetail(detailMessage.getPlainBody());
+if (!detail) {
+detail = extractSubjectTitle(detailMessage.getSubject());
+}
+} else if (mode === '件名' && detailMessage) {
 detail = extractSubjectTitle(detailMessage.getSubject());
 }
 
