@@ -40,6 +40,9 @@ return Number(match[1]) + '時' + match[2] + '分に' + match[3] + 'しました
 export function myFunction() {
 // the speech URL prefix comes from the SPEECH_URL_PREFIX script property
 const IFTTT = PropertiesService.getScriptProperties().getProperty('SPEECH_URL_PREFIX');
+// staging sets the DRY_RUN script property to 1: compose and log the
+// speech URL but never fetch it, so nothing is actually announced
+const DRY_RUN = PropertiesService.getScriptProperties().getProperty('DRY_RUN') === '1';
 const URL = '%E9%96%A2%E9%80%A3%E3%81%AE%E3%83%A1%E3%83%BC%E3%83%AB%E3%81%8C%E5%B1%8A%E3%81%84%E3%81%A6%E3%81%84%E3%81%BE%E3%81%99%E3%80%82%E7%A2%BA%E8%AA%8D%E3%81%97%E3%81%A6%E4%B8%8B%E3%81%95%E3%81%84%E3%80%82';
 // get the data from the spreadsheet and check all the labels.
 SpreadsheetApp.getActiveSheet().getDataRange().getValues().forEach((label, v) => {
@@ -86,10 +89,14 @@ Logger.log(IFTTT);
 const url = detail
 ? IFTTT + encodeURIComponent(label[1] + '、' + detail + '。')
 : IFTTT + encodeURIComponent(label[1]) + URL;
+if (DRY_RUN) {
+Logger.log('DRY_RUN: ' + url);
+} else {
 const res = UrlFetchApp.fetch(url, {
 'muteHttpExceptions': true,
 'method': 'get'
 });
 Logger.log("Response:" + res);
+}
 });
 }
