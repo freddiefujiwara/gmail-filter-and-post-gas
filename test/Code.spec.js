@@ -256,3 +256,34 @@ describe("myFunction with a detail mode in the third column", () => {
     expect(UrlFetchApp.fetch).not.toHaveBeenCalled();
   });
 });
+
+describe("myFunction with DRY_RUN", () => {
+  it("logs the composed URL and never fetches when DRY_RUN is 1", () => {
+    PropertiesService.getScriptProperties.mockImplementation(() => ({
+      getProperty: (name) =>
+        name === "SPEECH_URL_PREFIX"
+          ? PREFIX
+          : name === "DRY_RUN"
+            ? "1"
+            : null,
+    }));
+    try {
+      sheetValues = [["bunan", "武南学園", "登下校"]];
+      const message = makeBodyMessage("下校メール", GEKOU_BODY);
+      threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
+      myFunction();
+      expect(message.markRead).toHaveBeenCalledTimes(1);
+      expect(UrlFetchApp.fetch).not.toHaveBeenCalled();
+      expect(Logger.log).toHaveBeenCalledWith(
+        "DRY_RUN: " +
+          PREFIX +
+          encodeURIComponent("武南学園、17時47分に下校しました。")
+      );
+    } finally {
+      PropertiesService.getScriptProperties.mockImplementation(() => ({
+        getProperty: (name) =>
+          name === "SPEECH_URL_PREFIX" ? PREFIX : null,
+      }));
+    }
+  });
+});
