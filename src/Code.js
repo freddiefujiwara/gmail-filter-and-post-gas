@@ -104,6 +104,7 @@ const IFTTT = PropertiesService.getScriptProperties().getProperty('SPEECH_URL_PR
 // staging sets the DRY_RUN script property to 1: compose and log the
 // speech URL but never fetch it, so nothing is actually announced
 const DRY_RUN = PropertiesService.getScriptProperties().getProperty('DRY_RUN') === '1';
+const HOME_API_TOKEN = PropertiesService.getScriptProperties().getProperty('HOME_API_TOKEN');
 const URL = '%E9%96%A2%E9%80%A3%E3%81%AE%E3%83%A1%E3%83%BC%E3%83%AB%E3%81%8C%E5%B1%8A%E3%81%84%E3%81%A6%E3%81%84%E3%81%BE%E3%81%99%E3%80%82%E7%A2%BA%E8%AA%8D%E3%81%97%E3%81%A6%E4%B8%8B%E3%81%95%E3%81%84%E3%80%82';
 // get the data from the spreadsheet and check all the labels.
 SpreadsheetApp.getActiveSheet().getDataRange().getValues().forEach((label, v) => {
@@ -175,7 +176,8 @@ Logger.log('DRY_RUN: ' + url);
 } else {
 const res = UrlFetchApp.fetch(url, {
 'muteHttpExceptions': true,
-'method': 'get'
+'method': 'get',
+'headers': { 'X-Api-Token': HOME_API_TOKEN }
 });
 Logger.log("Response:" + res);
 }
