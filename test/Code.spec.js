@@ -8,6 +8,7 @@ import {
 
 // ---- Mocks for Google Apps Script globals ----
 const PREFIX = "https://example.invalid/speech/-s/";
+const TOKEN = "dummy-home-api-token";
 const SUFFIX =
   "%E9%96%A2%E9%80%A3%E3%81%AE%E3%83%A1%E3%83%BC%E3%83%AB%E3%81%8C%E5%B1%8A%E3%81%84%E3%81%A6%E3%81%84%E3%81%BE%E3%81%99%E3%80%82%E7%A2%BA%E8%AA%8D%E3%81%97%E3%81%A6%E4%B8%8B%E3%81%95%E3%81%84%E3%80%82";
 
@@ -32,7 +33,7 @@ global.UrlFetchApp = {
 
 global.PropertiesService = {
   getScriptProperties: vi.fn(() => ({
-    getProperty: vi.fn((name) => (name === "SPEECH_URL_PREFIX" ? PREFIX : null)),
+    getProperty: vi.fn((name) => (name === "SPEECH_URL_PREFIX" ? PREFIX : name === "HOME_API_TOKEN" ? TOKEN : null)),
   })),
 };
 
@@ -96,6 +97,7 @@ describe("myFunction", () => {
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(PREFIX + encoded + SUFFIX, {
       muteHttpExceptions: true,
       method: "get",
+      headers: { "X-Api-Token": TOKEN },
     });
   });
 
@@ -199,7 +201,7 @@ describe("myFunction with a detail mode in the third column", () => {
     myFunction();
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
       PREFIX + encodeURIComponent("楽天市場、発送完了のお知らせ。"),
-      { muteHttpExceptions: true, method: "get" }
+      { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
 
@@ -215,7 +217,7 @@ describe("myFunction with a detail mode in the third column", () => {
         encodeURIComponent(
           "武南学園、この度、日本スポーツ振興センターの制度改。"
         ),
-      { muteHttpExceptions: true, method: "get" }
+      { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
 
@@ -227,7 +229,7 @@ describe("myFunction with a detail mode in the third column", () => {
     expect(message.markRead).toHaveBeenCalledTimes(1);
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
       PREFIX + encodeURIComponent("武南学園、下校メール。"),
-      { muteHttpExceptions: true, method: "get" }
+      { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
 
@@ -241,7 +243,7 @@ describe("myFunction with a detail mode in the third column", () => {
     myFunction();
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
       PREFIX + encodeURIComponent("武南学園、下校メール。"),
-      { muteHttpExceptions: true, method: "get" }
+      { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
 
@@ -252,7 +254,7 @@ describe("myFunction with a detail mode in the third column", () => {
     myFunction();
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
       PREFIX + "%E6%AD%A6%E5%8D%97%E5%AD%A6%E5%9C%92" + SUFFIX,
-      { muteHttpExceptions: true, method: "get" }
+      { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
 
@@ -345,7 +347,7 @@ describe("myFunction with the タイムズ mode", () => {
         encodeURIComponent(
           "タイムズ、10月25日11時から23時まで、坂下第３駐車場のハスラーです。"
         ),
-      { muteHttpExceptions: true, method: "get" }
+      { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
 });
@@ -359,7 +361,7 @@ describe("myFunction with the 登下校 mode", () => {
     expect(message.markRead).toHaveBeenCalledTimes(1);
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
       PREFIX + encodeURIComponent("武南学園、17時47分に下校しました。"),
-      { muteHttpExceptions: true, method: "get" }
+      { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
 
@@ -373,7 +375,7 @@ describe("myFunction with the 登下校 mode", () => {
     myFunction();
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
       PREFIX + "%E6%AD%A6%E5%8D%97%E5%AD%A6%E5%9C%92" + SUFFIX,
-      { muteHttpExceptions: true, method: "get" }
+      { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
 
@@ -384,7 +386,7 @@ describe("myFunction with the 登下校 mode", () => {
     myFunction();
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
       PREFIX + "%E6%AD%A6%E5%8D%97%E5%AD%A6%E5%9C%92" + SUFFIX,
-      { muteHttpExceptions: true, method: "get" }
+      { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
 });
@@ -403,7 +405,7 @@ describe("myFunction with combined modes", () => {
         encodeURIComponent(
           "武南学園、この度、日本スポーツ振興センターの制度改。"
         ),
-      { muteHttpExceptions: true, method: "get" }
+      { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
 
@@ -414,7 +416,7 @@ describe("myFunction with combined modes", () => {
     myFunction();
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
       PREFIX + encodeURIComponent("武南学園、8時23分に登校しました。"),
-      { muteHttpExceptions: true, method: "get" }
+      { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
 
@@ -425,7 +427,7 @@ describe("myFunction with combined modes", () => {
     myFunction();
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
       PREFIX + encodeURIComponent("武南学園、下校メール。"),
-      { muteHttpExceptions: true, method: "get" }
+      { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
 
@@ -436,7 +438,7 @@ describe("myFunction with combined modes", () => {
     myFunction();
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
       PREFIX + encodeURIComponent("武南学園、下校メール。"),
-      { muteHttpExceptions: true, method: "get" }
+      { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
 
@@ -453,7 +455,7 @@ describe("myFunction with combined modes", () => {
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
       PREFIX +
         encodeURIComponent("クロネコヤマト、本日、お荷物をお届けいたします。"),
-      { muteHttpExceptions: true, method: "get" }
+      { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
 });
