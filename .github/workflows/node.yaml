@@ -13,16 +13,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - node-version: "18"
-            deploy: false
-          - node-version: "20"
-            deploy: false
-          - node-version: "22"
+          - node-version: "24"
             deploy: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "${{ matrix.node-version }}"
 
