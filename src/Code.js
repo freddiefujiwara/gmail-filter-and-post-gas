@@ -100,7 +100,7 @@ car[1] +
 
 export function myFunction() {
 // the speech URL prefix comes from the SPEECH_URL_PREFIX script property
-const IFTTT = PropertiesService.getScriptProperties().getProperty('SPEECH_URL_PREFIX');
+const SPEECH_URL_PREFIX = PropertiesService.getScriptProperties().getProperty('SPEECH_URL_PREFIX');
 // staging sets the DRY_RUN script property to 1: compose and log the
 // speech URL but never fetch it, so nothing is actually announced
 const DRY_RUN = PropertiesService.getScriptProperties().getProperty('DRY_RUN') === '1';
@@ -166,11 +166,11 @@ break;
 }
 }
 
-// POST IFTTT if you've got email from with the label
-Logger.log(IFTTT);
+// POST to the speech URL if you've got email from with the label
+Logger.log(SPEECH_URL_PREFIX);
 const url = detail
-? IFTTT + encodeURIComponent(label[1] + '、' + detail + '。')
-: IFTTT + encodeURIComponent(label[1]) + URL;
+? SPEECH_URL_PREFIX + encodeURIComponent(label[1] + '、' + detail + '。')
+: SPEECH_URL_PREFIX + encodeURIComponent(label[1]) + URL;
 if (DRY_RUN) {
 Logger.log('DRY_RUN: ' + url);
 } else {
