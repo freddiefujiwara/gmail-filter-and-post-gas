@@ -75,8 +75,8 @@ describe("myFunction", () => {
   });
 
   it("marks every message read, logs subjects, and fetches once per label with mail", () => {
-    const text = "武南学園";
-    // the percent-encoded form the old =ENCODEURL("武南学園") cells produced
+    const text = "青葉学園";
+    // the percent-encoded form the old =ENCODEURL("青葉学園") cells produced
     const encoded = "%E6%AD%A6%E5%8D%97%E5%AD%A6%E5%9C%92";
     sheetValues = [["bunan", text]];
     const m1 = makeMessage("subject one");
@@ -177,9 +177,9 @@ describe("extractSubjectTitle", () => {
   it("prefers the segment in corner brackets as the title", () => {
     expect(
       extractSubjectTitle(
-        "佐藤 恵子 先生が「この度、日本スポーツ振興センターの制度改...」をR8第2学年【保護者】に投稿しました。"
+        "佐藤 恵子 先生が「この度、スポーツ振興センターの制度改...」をR8第2学年【保護者】に投稿しました。"
       )
-    ).toBe("この度、日本スポーツ振興センターの制度改");
+    ).toBe("この度、スポーツ振興センターの制度改");
   });
 
   it("removes a trailing ellipsis the sender left in the title", () => {
@@ -206,35 +206,35 @@ describe("myFunction with a detail mode in the third column", () => {
   });
 
   it("speaks the corner-bracket title of a school post notification", () => {
-    sheetValues = [["bunan", "武南学園", "件名"]];
+    sheetValues = [["bunan", "青葉学園", "件名"]];
     const message = makeMessage(
-      "佐藤 恵子 先生が「この度、日本スポーツ振興センターの制度改...」をR8第2学年【保護者】に投稿しました。"
+      "佐藤 恵子 先生が「この度、スポーツ振興センターの制度改...」をR8第2学年【保護者】に投稿しました。"
     );
     threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
     myFunction();
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
       PREFIX +
         encodeURIComponent(
-          "武南学園、この度、日本スポーツ振興センターの制度改。"
+          "青葉学園、この度、スポーツ振興センターの制度改。"
         ),
       { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
 
   it("speaks the plain subject of a school gate mail", () => {
-    sheetValues = [["bunan", "武南学園", "件名"]];
+    sheetValues = [["bunan", "青葉学園", "件名"]];
     const message = makeMessage("下校メール");
     threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
     myFunction();
     expect(message.markRead).toHaveBeenCalledTimes(1);
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      PREFIX + encodeURIComponent("武南学園、下校メール。"),
+      PREFIX + encodeURIComponent("青葉学園、下校メール。"),
       { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
 
   it("uses the last message of the first thread for the title", () => {
-    sheetValues = [["bunan", "武南学園", "件名"]];
+    sheetValues = [["bunan", "青葉学園", "件名"]];
     const older = makeMessage("登校メール");
     const newer = makeMessage("下校メール");
     threadsByQuery["label:bunan label:unread"] = [
@@ -242,13 +242,13 @@ describe("myFunction with a detail mode in the third column", () => {
     ];
     myFunction();
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      PREFIX + encodeURIComponent("武南学園、下校メール。"),
+      PREFIX + encodeURIComponent("青葉学園、下校メール。"),
       { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
 
   it("keeps the legacy announcement for an unknown mode", () => {
-    sheetValues = [["bunan", "武南学園", "その他"]];
+    sheetValues = [["bunan", "青葉学園", "その他"]];
     const message = makeMessage("下校メール");
     threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
     myFunction();
@@ -259,7 +259,7 @@ describe("myFunction with a detail mode in the third column", () => {
   });
 
   it("does not fetch for a mode row without unread mail", () => {
-    sheetValues = [["bunan", "武南学園", "件名"]];
+    sheetValues = [["bunan", "青葉学園", "件名"]];
     myFunction();
     expect(UrlFetchApp.fetch).not.toHaveBeenCalled();
   });
@@ -272,9 +272,9 @@ const makeBodyMessage = (subject, body) => ({
 });
 
 const TOUKOU_BODY =
-  "山田　花子 さん\n\n武南高等学校からのお知らせです。\n\n中学・高等学校に 2026/11/05 08:23:38 に登校しました。\n\n\n本メールは送信専用のため返信はお受けできません。";
+  "山田　花子 さん\n\n青葉高等学校からのお知らせです。\n\n中学・高等学校に 2026/11/05 08:23:38 に登校しました。\n\n\n本メールは送信専用のため返信はお受けできません。";
 const GEKOU_BODY =
-  "山田　花子 さん\n\n武南高等学校からのお知らせです。\n\n中学・高等学校より 2026/11/05 17:47:34 に下校しました。\n\n\n本メールは送信専用のため返信はお受けできません。";
+  "山田　花子 さん\n\n青葉高等学校からのお知らせです。\n\n中学・高等学校より 2026/11/05 17:47:34 に下校しました。\n\n\n本メールは送信専用のため返信はお受けできません。";
 
 describe("extractSchoolDetail", () => {
   it("extracts the arrival time from a 登校 mail body", () => {
@@ -354,21 +354,21 @@ describe("myFunction with the タイムズ mode", () => {
 
 describe("myFunction with the 登下校 mode", () => {
   it("speaks the gate time from the body", () => {
-    sheetValues = [["bunan", "武南学園", "登下校"]];
+    sheetValues = [["bunan", "青葉学園", "登下校"]];
     const message = makeBodyMessage("下校メール", GEKOU_BODY);
     threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
     myFunction();
     expect(message.markRead).toHaveBeenCalledTimes(1);
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      PREFIX + encodeURIComponent("武南学園、17時47分に下校しました。"),
+      PREFIX + encodeURIComponent("青葉学園、17時47分に下校しました。"),
       { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
 
   it("stays on the legacy announcement when the body has no gate time", () => {
-    sheetValues = [["bunan", "武南学園", "登下校"]];
+    sheetValues = [["bunan", "青葉学園", "登下校"]];
     const message = makeBodyMessage(
-      "佐藤 恵子 先生が「この度、日本スポーツ振興センターの制度改...」をR8第2学年【保護者】に投稿しました。",
+      "佐藤 恵子 先生が「この度、スポーツ振興センターの制度改...」をR8第2学年【保護者】に投稿しました。",
       "投稿のお知らせです。"
     );
     threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
@@ -380,7 +380,7 @@ describe("myFunction with the 登下校 mode", () => {
   });
 
   it("falls back to the legacy announcement when neither works", () => {
-    sheetValues = [["bunan", "武南学園", "登下校"]];
+    sheetValues = [["bunan", "青葉学園", "登下校"]];
     const message = makeBodyMessage("", "時刻の入っていない本文");
     threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
     myFunction();
@@ -393,9 +393,9 @@ describe("myFunction with the 登下校 mode", () => {
 
 describe("myFunction with combined modes", () => {
   it("登下校、件名 speaks the subject title when the body has no gate time", () => {
-    sheetValues = [["bunan", "武南学園", "登下校、件名"]];
+    sheetValues = [["bunan", "青葉学園", "登下校、件名"]];
     const message = makeBodyMessage(
-      "佐藤 恵子 先生が「この度、日本スポーツ振興センターの制度改...」をR8第2学年【保護者】に投稿しました。",
+      "佐藤 恵子 先生が「この度、スポーツ振興センターの制度改...」をR8第2学年【保護者】に投稿しました。",
       "投稿のお知らせです。"
     );
     threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
@@ -403,41 +403,41 @@ describe("myFunction with combined modes", () => {
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
       PREFIX +
         encodeURIComponent(
-          "武南学園、この度、日本スポーツ振興センターの制度改。"
+          "青葉学園、この度、スポーツ振興センターの制度改。"
         ),
       { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
 
   it("登下校、件名 still prefers the gate time when present", () => {
-    sheetValues = [["bunan", "武南学園", "登下校、件名"]];
+    sheetValues = [["bunan", "青葉学園", "登下校、件名"]];
     const message = makeBodyMessage("登校メール", TOUKOU_BODY);
     threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
     myFunction();
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      PREFIX + encodeURIComponent("武南学園、8時23分に登校しました。"),
+      PREFIX + encodeURIComponent("青葉学園、8時23分に登校しました。"),
       { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
 
   it("件名、登下校 prefers the subject title when both are available", () => {
-    sheetValues = [["bunan", "武南学園", "件名、登下校"]];
+    sheetValues = [["bunan", "青葉学園", "件名、登下校"]];
     const message = makeBodyMessage("下校メール", GEKOU_BODY);
     threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
     myFunction();
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      PREFIX + encodeURIComponent("武南学園、下校メール。"),
+      PREFIX + encodeURIComponent("青葉学園、下校メール。"),
       { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
 
   it("ignores unknown modes mixed into the list", () => {
-    sheetValues = [["bunan", "武南学園", "不明、件名"]];
+    sheetValues = [["bunan", "青葉学園", "不明、件名"]];
     const message = makeBodyMessage("下校メール", GEKOU_BODY);
     threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
     myFunction();
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      PREFIX + encodeURIComponent("武南学園、下校メール。"),
+      PREFIX + encodeURIComponent("青葉学園、下校メール。"),
       { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
@@ -471,7 +471,7 @@ describe("myFunction with DRY_RUN", () => {
             : null,
     }));
     try {
-      sheetValues = [["bunan", "武南学園", "件名"]];
+      sheetValues = [["bunan", "青葉学園", "件名"]];
       const message = makeMessage("下校メール");
       threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
       myFunction();
@@ -480,7 +480,7 @@ describe("myFunction with DRY_RUN", () => {
       expect(Logger.log).toHaveBeenCalledWith(
         "DRY_RUN: " +
           PREFIX +
-          encodeURIComponent("武南学園、下校メール。")
+          encodeURIComponent("青葉学園、下校メール。")
       );
     } finally {
       PropertiesService.getScriptProperties.mockImplementation(() => ({
@@ -495,7 +495,7 @@ describe("myFunction with blank label rows", () => {
   it("ignores rows whose label cell is empty instead of matching all unread mail", () => {
     sheetValues = [
       ["", "", ""],
-      ["bunan", "武南学園", ""],
+      ["bunan", "青葉学園", ""],
     ];
     const stray = makeMessage("関係ないメール");
     threadsByQuery["label: label:unread"] = [makeThread([stray])];
