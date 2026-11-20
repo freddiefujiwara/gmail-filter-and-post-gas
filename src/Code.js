@@ -3,6 +3,32 @@ const SUBJECT_MAX_LENGTH = 20;
 // Characters that end the meaningful head of a subject.
 const SUBJECT_DELIMITERS = ['：', ':', '｜', '|', '、', '。'];
 
+// Read a value as text without ever throwing: strings pass through,
+// other scalars stringify exactly as String() did, and a value whose
+// toString is not callable (which String() throws on) reads as empty.
+function outsideText_(value) {
+if (typeof value === 'string') {
+return value;
+}
+try {
+return String(value);
+} catch (e) {
+return '';
+}
+}
+
+// Spoken text is always passed through encodeURIComponent, which
+// throws on a lone surrogate — one half of an astral character, left
+// when the length cut splits a pair or already present in the mail.
+// Lone surrogates are spoken as U+FFFD; well-formed pairs are
+// untouched, so every previously encodable text is unchanged.
+function speechSafe_(text) {
+return text.replace(
+/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g,
+'�'
+);
+}
+
 // Extract the title to speak from a message subject. Japanese
 // notification mails often embed the actual title in corner brackets,
 // e.g. "someone posted 「the title」" — that segment wins. Otherwise
@@ -13,7 +39,7 @@ export function extractSubjectTitle(subject) {
 if (!subject) {
 return '';
 }
-const stripped = String(subject)
+const stripped = outsideText_(subject)
 .trim()
 .replace(/^(\s*【[\s\S]*?】\s*|\s*\[[\s\S]*?\]\s*)+/, '');
 const quoted = stripped.match(/「([^」]+)」/);
@@ -33,7 +59,7 @@ cut = index;
 });
 title = stripped.slice(0, cut).trim();
 }
-return title.slice(0, SUBJECT_MAX_LENGTH);
+return speechSafe_(title.slice(0, SUBJECT_MAX_LENGTH));
 }
 
 // Extract "H時MM分に登校しました" / "H時MM分に下校しました" from the plain
@@ -42,10 +68,15 @@ export function extractSchoolDetail(body) {
 if (!body) {
 return '';
 }
-const match = String(body).match(
+const match = outsideText_(body).match(
 /(\d{1,2}):(\d{2}):\d{2}\s*に(登校|下校)しました/
 );
 if (!match) {
+return '';
+}
+// only times that exist on the clock are announced: the pattern
+// also matches shapes like 25:99 that no gate mail can carry
+if (Number(match[1]) > 23 || Number(match[2]) > 59) {
 return '';
 }
 return Number(match[1]) + '時' + match[2] + '分に' + match[3] + 'しました';
@@ -63,6 +94,26 @@ Number(hour) +
 );
 }
 
+// Whether a datetime captured by the ■日時 patterns below exists:
+// the patterns accept shapes like month 13, February 30 or 25:99
+// that no real booking can carry, and a Date built from them
+// silently rolls over, so the components must survive a round trip.
+function isRealDateTime_(match) {
+const year = Number(match[1]);
+const month = Number(match[2]);
+const day = Number(match[3]);
+const hour = Number(match[4]);
+const minute = Number(match[5]);
+const date = new Date(year, month - 1, day, hour, minute);
+return (
+date.getFullYear() === year &&
+date.getMonth() === month - 1 &&
+date.getDate() === day &&
+date.getHours() === hour &&
+date.getMinutes() === minute
+);
+}
+
 // Extract the booking summary from a Times CAR mail body: the
 // ■予約内容 block carries the station, the car and the start /
 // return datetimes on the lines after each heading.
@@ -70,24 +121,27 @@ export function extractTimesDetail(body) {
 if (!body) {
 return '';
 }
-const text = String(body);
+const text = outsideText_(body);
 const start = text.match(
-/■利用開始日時\s*\n\s*\d{4}\/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})/
+/■利用開始日時\s*\n\s*(\d{4})\/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})/
 );
 const end = text.match(
-/■返却予定日時\s*\n\s*\d{4}\/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})/
+/■返却予定日時\s*\n\s*(\d{4})\/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})/
 );
 const station = text.match(/■ステーション\s*\n\s*(\S.*)/);
 const car = text.match(/■車両\s*\n\s*([^\s（(]+)/);
 if (!start || !end || !station || !car) {
 return '';
 }
-const sameDay = start[1] === end[1] && start[2] === end[2];
+if (!isRealDateTime_(start) || !isRealDateTime_(end)) {
+return '';
+}
+const sameDay = start[2] === end[2] && start[3] === end[3];
 const endText = sameDay
-? Number(end[3]) + '時' + (end[4] === '00' ? '' : end[4] + '分') + 'まで'
-: formatTimesWhen(end[1], end[2], end[3], end[4]) + 'まで';
-return (
-formatTimesWhen(start[1], start[2], start[3], start[4]) +
+? Number(end[4]) + '時' + (end[5] === '00' ? '' : end[5] + '分') + 'まで'
+: formatTimesWhen(end[2], end[3], end[4], end[5]) + 'まで';
+return speechSafe_(
+formatTimesWhen(start[2], start[3], start[4], start[5]) +
 'から' +
 endText +
 '、' +
@@ -110,7 +164,7 @@ const URL = '%E9%96%A2%E9%80%A3%E3%81%AE%E3%83%A1%E3%83%BC%E3%83%AB%E3%81%8C%E5%
 SpreadsheetApp.getActiveSheet().getDataRange().getValues().forEach((label, v) => {
 // skip blank rows: an empty label would degenerate the search below
 // into matching every unread message in the mailbox
-if (label.length < 2 || !label[0] || !String(label[0]).trim()) {
+if (!Array.isArray(label) || label.length < 2 || !label[0] || !String(label[0]).trim()) {
 return;
 }
 
