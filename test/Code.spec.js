@@ -177,7 +177,7 @@ describe("extractSubjectTitle", () => {
   it("prefers the segment in corner brackets as the title", () => {
     expect(
       extractSubjectTitle(
-        "石川 美和子 先生が「この度、日本スポーツ振興センターの制度改...」をR8第2学年【保護者】に投稿しました。"
+        "佐藤 恵子 先生が「この度、日本スポーツ振興センターの制度改...」をR8第2学年【保護者】に投稿しました。"
       )
     ).toBe("この度、日本スポーツ振興センターの制度改");
   });
@@ -208,7 +208,7 @@ describe("myFunction with a detail mode in the third column", () => {
   it("speaks the corner-bracket title of a school post notification", () => {
     sheetValues = [["bunan", "武南学園", "件名"]];
     const message = makeMessage(
-      "石川 美和子 先生が「この度、日本スポーツ振興センターの制度改...」をR8第2学年【保護者】に投稿しました。"
+      "佐藤 恵子 先生が「この度、日本スポーツ振興センターの制度改...」をR8第2学年【保護者】に投稿しました。"
     );
     threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
     myFunction();
@@ -272,9 +272,9 @@ const makeBodyMessage = (subject, body) => ({
 });
 
 const TOUKOU_BODY =
-  "藤原　千咲 さん\n\n武南高等学校からのお知らせです。\n\n中学・高等学校に 2026/11/05 08:23:38 に登校しました。\n\n\n本メールは送信専用のため返信はお受けできません。";
+  "山田　花子 さん\n\n武南高等学校からのお知らせです。\n\n中学・高等学校に 2026/11/05 08:23:38 に登校しました。\n\n\n本メールは送信専用のため返信はお受けできません。";
 const GEKOU_BODY =
-  "藤原　千咲 さん\n\n武南高等学校からのお知らせです。\n\n中学・高等学校より 2026/11/05 17:47:34 に下校しました。\n\n\n本メールは送信専用のため返信はお受けできません。";
+  "山田　花子 さん\n\n武南高等学校からのお知らせです。\n\n中学・高等学校より 2026/11/05 17:47:34 に下校しました。\n\n\n本メールは送信専用のため返信はお受けできません。";
 
 describe("extractSchoolDetail", () => {
   it("extracts the arrival time from a 登校 mail body", () => {
@@ -368,7 +368,7 @@ describe("myFunction with the 登下校 mode", () => {
   it("stays on the legacy announcement when the body has no gate time", () => {
     sheetValues = [["bunan", "武南学園", "登下校"]];
     const message = makeBodyMessage(
-      "石川 美和子 先生が「この度、日本スポーツ振興センターの制度改...」をR8第2学年【保護者】に投稿しました。",
+      "佐藤 恵子 先生が「この度、日本スポーツ振興センターの制度改...」をR8第2学年【保護者】に投稿しました。",
       "投稿のお知らせです。"
     );
     threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
@@ -395,7 +395,7 @@ describe("myFunction with combined modes", () => {
   it("登下校、件名 speaks the subject title when the body has no gate time", () => {
     sheetValues = [["bunan", "武南学園", "登下校、件名"]];
     const message = makeBodyMessage(
-      "石川 美和子 先生が「この度、日本スポーツ振興センターの制度改...」をR8第2学年【保護者】に投稿しました。",
+      "佐藤 恵子 先生が「この度、日本スポーツ振興センターの制度改...」をR8第2学年【保護者】に投稿しました。",
       "投稿のお知らせです。"
     );
     threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
