@@ -77,7 +77,7 @@ describe("myFunction", () => {
   it("marks every message read, logs subjects, and fetches once per label with mail", () => {
     const text = "青葉学園";
     // the percent-encoded form the old =ENCODEURL("青葉学園") cells produced
-    const encoded = "%E6%AD%A6%E5%8D%97%E5%AD%A6%E5%9C%92";
+    const encoded = "%E9%9D%92%E8%91%89%E5%AD%A6%E5%9C%92";
     sheetValues = [["bunan", text]];
     const m1 = makeMessage("subject one");
     const m2 = makeMessage("subject two");
@@ -253,7 +253,7 @@ describe("myFunction with a detail mode in the third column", () => {
     threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
     myFunction();
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      PREFIX + "%E6%AD%A6%E5%8D%97%E5%AD%A6%E5%9C%92" + SUFFIX,
+      PREFIX + "%E9%9D%92%E8%91%89%E5%AD%A6%E5%9C%92" + SUFFIX,
       { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
@@ -374,7 +374,7 @@ describe("myFunction with the 登下校 mode", () => {
     threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
     myFunction();
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      PREFIX + "%E6%AD%A6%E5%8D%97%E5%AD%A6%E5%9C%92" + SUFFIX,
+      PREFIX + "%E9%9D%92%E8%91%89%E5%AD%A6%E5%9C%92" + SUFFIX,
       { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
@@ -385,7 +385,7 @@ describe("myFunction with the 登下校 mode", () => {
     threadsByQuery["label:bunan label:unread"] = [makeThread([message])];
     myFunction();
     expect(UrlFetchApp.fetch).toHaveBeenCalledWith(
-      PREFIX + "%E6%AD%A6%E5%8D%97%E5%AD%A6%E5%9C%92" + SUFFIX,
+      PREFIX + "%E9%9D%92%E8%91%89%E5%AD%A6%E5%9C%92" + SUFFIX,
       { muteHttpExceptions: true, method: "get", headers: { "X-Api-Token": TOKEN } }
     );
   });
