@@ -519,6 +519,10 @@ describe("schoolGatePresenceEvent", () => {
     expect(ev.action).toBe("leave");
     expect(ev.date).toBe("2026-11-05");
     expect(new Date(ev.at).toISOString()).toBe("2026-11-04T23:03:38.000Z");
+    expect(ev.school.action).toBe("arrive");
+    expect(new Date(ev.school.at).toISOString()).toBe(
+      "2026-11-04T23:23:38.000Z"
+    );
   });
 
   it("derives arriving home 20 minutes after an afternoon 下校 time", () => {
@@ -528,6 +532,10 @@ describe("schoolGatePresenceEvent", () => {
     expect(ev.action).toBe("arrive");
     expect(ev.date).toBe("2026-11-05");
     expect(new Date(ev.at).toISOString()).toBe("2026-11-05T09:07:34.000Z");
+    expect(ev.school.action).toBe("leave");
+    expect(new Date(ev.school.at).toISOString()).toBe(
+      "2026-11-05T08:47:34.000Z"
+    );
   });
 
   it("ignores an off-pattern evening 登校 mail", () => {
@@ -608,7 +616,7 @@ describe("gate presence recording", () => {
     UrlFetchApp.fetch.mockImplementation(() => "OK");
   });
 
-  it("posts a leave event backdated 20 minutes when a 登校 mail is seen", () => {
+  it("posts a home leave backdated 20 minutes and the school arrival at the gate time when a 登校 mail is seen", () => {
     nowSpy = vi
       .spyOn(Date, "now")
       .mockReturnValue(Date.parse("2026-11-05T00:00:00.000Z"));
@@ -626,13 +634,20 @@ describe("gate presence recording", () => {
         action: "leave",
         timestamp: "2026-11-04T23:03:38.000Z",
       },
+      {
+        token: "presence-token",
+        person: "kid.example",
+        place: "school",
+        action: "arrive",
+        timestamp: "2026-11-04T23:23:38.000Z",
+      },
     ]);
     // the same gate mail seen again does not post twice
     myFunction();
-    expect(presencePosts.length).toBe(1);
+    expect(presencePosts.length).toBe(2);
   });
 
-  it("holds a 下校 event until 20 minutes after the gate time, then posts it", () => {
+  it("posts the school leave at the gate time at once and holds the home arrival until 20 minutes after a 下校 time", () => {
     nowSpy = vi
       .spyOn(Date, "now")
       .mockReturnValue(Date.parse("2026-11-05T08:50:00.000Z"));
@@ -642,13 +657,28 @@ describe("gate presence recording", () => {
     );
     threadsByQuery["label:school label:unread"] = [makeThread([msg])];
     myFunction();
-    expect(presencePosts).toEqual([]);
-    // a later run, after the derived arrival time, flushes it even
-    // though no new mail arrived
+    expect(presencePosts).toEqual([
+      {
+        token: "presence-token",
+        person: "kid.example",
+        place: "school",
+        action: "leave",
+        timestamp: "2026-11-05T08:47:34.000Z",
+      },
+    ]);
+    // a later run, after the derived arrival time, flushes the home
+    // arrival even though no new mail arrived
     nowSpy.mockReturnValue(Date.parse("2026-11-05T09:10:00.000Z"));
     threadsByQuery = {};
     myFunction();
     expect(presencePosts).toEqual([
+      {
+        token: "presence-token",
+        person: "kid.example",
+        place: "school",
+        action: "leave",
+        timestamp: "2026-11-05T08:47:34.000Z",
+      },
       {
         token: "presence-token",
         person: "kid.example",

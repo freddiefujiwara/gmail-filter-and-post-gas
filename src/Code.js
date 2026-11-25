@@ -154,23 +154,28 @@ car[1] +
 
 // ---- presence derivation from school gate mails ----
 // A school gate mail carries the exact time the gate reader was
-// tapped. The matching presence events for home are derived with
-// a fixed offset: leaving home is 20 minutes before the 登校 time and
-// arriving home is 20 minutes after the 下校 time. A derived event is
-// only ever written once its time has come: a 下校 mail is processed
-// about 20 minutes before the arrival it implies, so the event is
-// held in the PRESENCE_GATE_STATE script property and flushed by a
-// later run. Everything is a no-op unless the PRESENCE_GAS_URL,
-// PRESENCE_API_TOKEN and PRESENCE_GATE_PERSON script properties are
-// all set, and DRY_RUN only logs the payload instead of posting it.
+// tapped. Two kinds of presence events come out of it. The gate tap
+// itself is recorded as-is at school: arriving at the 登校 time and
+// leaving at the 下校 time. The matching events for home are derived
+// with a fixed offset: leaving home is 20 minutes before the 登校
+// time and arriving home is 20 minutes after the 下校 time. A derived
+// home event is only ever written once its time has come: a 下校
+// mail is processed about 20 minutes before the arrival it implies,
+// so the event is held in the PRESENCE_GATE_STATE script property
+// and flushed by a later run. Everything is a no-op unless the
+// PRESENCE_GAS_URL, PRESENCE_API_TOKEN and PRESENCE_GATE_PERSON
+// script properties are all set, and DRY_RUN only logs the payload
+// instead of posting it.
 const GATE_HOME_OFFSET_MS = 20 * 60 * 1000;
 const PRESENCE_GATE_STATE_KEY = 'PRESENCE_GATE_STATE';
 
-// Extract the presence event implied by a school gate mail body, e.g.
-// "... 2026/11/05 08:23:38 に登校しました。" Returns
-// {action: 'leave'|'arrive', at: <epoch ms>, date: 'YYYY-MM-DD'} where
-// date is the gate day in JST, or null when the body carries no usable
-// gate time.
+// Extract the presence events implied by a school gate mail body,
+// e.g. "... 2026/11/05 08:23:38 に登校しました。" Returns
+// {action: 'leave'|'arrive', at: <epoch ms>, date: 'YYYY-MM-DD',
+// school: {action: 'arrive'|'leave', at: <epoch ms>}} where action/at
+// describe the derived home event, school describes the gate tap
+// itself, and date is the gate day in JST. Returns null when the body
+// carries no usable gate time.
 export function schoolGatePresenceEvent(body) {
 if (!body) {
 return null;
@@ -215,8 +220,18 @@ String(month).padStart(2, '0') +
 '-' +
 String(day).padStart(2, '0');
 return isGateIn
-? { action: 'leave', at: gateMs - GATE_HOME_OFFSET_MS, date: date }
-: { action: 'arrive', at: gateMs + GATE_HOME_OFFSET_MS, date: date };
+? {
+action: 'leave',
+at: gateMs - GATE_HOME_OFFSET_MS,
+date: date,
+school: { action: 'arrive', at: gateMs }
+}
+: {
+action: 'arrive',
+at: gateMs + GATE_HOME_OFFSET_MS,
+date: date,
+school: { action: 'leave', at: gateMs }
+};
 }
 
 function presenceGateConfig_() {
@@ -244,10 +259,18 @@ const parsed = raw ? JSON.parse(raw) : {};
 return {
 leaveDate: parsed.leaveDate || null,
 arriveDate: parsed.arriveDate || null,
+schoolArriveDate: parsed.schoolArriveDate || null,
+schoolLeaveDate: parsed.schoolLeaveDate || null,
 pending: Array.isArray(parsed.pending) ? parsed.pending : []
 };
 } catch (e) {
-return { leaveDate: null, arriveDate: null, pending: [] };
+return {
+leaveDate: null,
+arriveDate: null,
+schoolArriveDate: null,
+schoolLeaveDate: null,
+pending: []
+};
 }
 }
 
@@ -258,11 +281,11 @@ JSON.stringify(state)
 );
 }
 
-function postPresenceEvent_(config, action, atMs) {
+function postPresenceEvent_(config, place, action, atMs) {
 const payload = {
 token: config.token,
 person: config.person,
-place: 'home',
+place: place,
 action: action,
 timestamp: new Date(atMs).toISOString()
 };
@@ -287,7 +310,7 @@ return false;
 }
 
 // Inspect one message seen by the label loop; when it is a gate mail,
-// record (or hold) the presence event it implies. Runs inside the
+// record (or hold) the presence events it implies. Runs inside the
 // loop so gate mails are seen exactly once, while still unread.
 function collectGatePresence_(message) {
 const subject = message.getSubject();
@@ -303,34 +326,52 @@ if (!event) {
 return;
 }
 const state = loadPresenceGateState_();
-const recordedDate =
-event.action === 'leave' ? state.leaveDate : state.arriveDate;
-if (recordedDate === event.date) {
+// the derived home event first, so it lands in the sheet ahead of
+// the school event it implies
+recordGateEvent_(config, state, 'home', event.action, event.at, event.date);
+recordGateEvent_(
+config,
+state,
+'school',
+event.school.action,
+event.school.at,
+event.date
+);
+savePresenceGateState_(state);
+}
+
+// The state field that records, per place and action, the gate day
+// already written, so a gate mail never produces the same event
+// twice.
+function gateDateKey_(place, action) {
+if (place === 'school') {
+return action === 'arrive' ? 'schoolArriveDate' : 'schoolLeaveDate';
+}
+return action === 'leave' ? 'leaveDate' : 'arriveDate';
+}
+
+// Record one gate-derived presence event: post it now when its time
+// has come, otherwise hold it in the pending list and let a later
+// run write it once its time has come (a failed post is held the
+// same way and retried by the flush).
+function recordGateEvent_(config, state, place, action, at, date) {
+const key = gateDateKey_(place, action);
+if (state[key] === date) {
 return;
 }
 if (
 state.pending.some(
-(p) => p.action === event.action && p.date === event.date
+(p) =>
+(p.place || 'home') === place && p.action === action && p.date === date
 )
 ) {
 return;
 }
-if (
-event.at <= Date.now() &&
-postPresenceEvent_(config, event.action, event.at)
-) {
-if (event.action === 'leave') {
-state.leaveDate = event.date;
+if (at <= Date.now() && postPresenceEvent_(config, place, action, at)) {
+state[key] = date;
 } else {
-state.arriveDate = event.date;
+state.pending.push({ place: place, action: action, at: at, date: date });
 }
-} else {
-// a 下校 event is dated 20 minutes ahead: hold it and let a later
-// run write it once its time has come (failed posts retry the same
-// way)
-state.pending.push({ action: event.action, at: event.at, date: event.date });
-}
-savePresenceGateState_(state);
 }
 
 // Write held presence events whose time has come. Runs at the top of
@@ -348,12 +389,11 @@ const now = Date.now();
 const remaining = [];
 let changed = false;
 state.pending.forEach((p) => {
-if (p.at <= now && postPresenceEvent_(config, p.action, p.at)) {
-if (p.action === 'leave') {
-state.leaveDate = p.date;
-} else {
-state.arriveDate = p.date;
-}
+// pending entries written before places were recorded carry no
+// place and are home events
+const place = p.place || 'home';
+if (p.at <= now && postPresenceEvent_(config, place, p.action, p.at)) {
+state[gateDateKey_(place, p.action)] = p.date;
 changed = true;
 } else {
 remaining.push(p);

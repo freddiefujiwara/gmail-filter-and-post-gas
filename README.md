@@ -21,6 +21,16 @@ home speaker.
     sentence meaning "related mail has arrived, please check it").
   - If there is no unread mail for the label, it does nothing for
     that row. Rows are processed in sheet order.
+- School gate mails （登校メール / 下校メール） also feed the
+  presence log when the `PRESENCE_GAS_URL`, `PRESENCE_API_TOKEN`
+  and `PRESENCE_GATE_PERSON` script properties are all set. The
+  gate tap itself is recorded at school (arrive at the 登校 time,
+  leave at the 下校 time), and the matching home events are
+  derived with a 20-minute offset (leave home 20 minutes before
+  the 登校 time, arrive home 20 minutes after the 下校 time). A
+  future-dated home arrival is held in a script property and
+  written by a later run once its time has come. With `DRY_RUN=1`
+  the payloads are only logged, never posted.
 
 ## Setup
 
